@@ -1,0 +1,31 @@
+{
+  "name": "localhost/scamazon_svr",
+  "description": "Scamazon Server",
+  "type": "project",
+  "license": "Apache-2.0",
+  "authors": [
+    {
+      "name": "benhensor",
+      "email": "benhensor@gmail.com"
+    }
+  ],
+  "minimum-stability": "stable",
+  "require": {
+    "php": "^8.1",
+    "firebase/php-jwt": "^6.0",
+    "vlucas/phpdotenv": "^5.5",
+    "ext-pdo": "*",
+    "ext-json": "*",
+    "guzzlehttp/guzzle": "^7.9"
+  },
+  "autoload": {
+    "psr-4": {
+      "Config\\": "config/",
+      "Services\\": "services/",
+      "routes\\": "routes/",
+      "Middleware\\": "middleware/",
+      "Controllers\\": "controllers/",
+      "Models\\": "models/"
+    }
+  }
+}
