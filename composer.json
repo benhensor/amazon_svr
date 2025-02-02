@@ -16,7 +16,8 @@
     "vlucas/phpdotenv": "^5.5",
     "ext-pdo": "*",
     "ext-json": "*",
-    "guzzlehttp/guzzle": "^7.9"
+    "guzzlehttp/guzzle": "^7.9",
+    "ramsey/uuid": "^4.7"
   },
   "autoload": {
     "psr-4": {

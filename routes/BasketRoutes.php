@@ -1,87 +1,36 @@
 <?php
-
 use Controllers\BasketController;
 
 $controller = new BasketController();
 
 // Get additional path segments for nested routes
-$subResource = $pathParts[3] ?? ''; // 'items'
-$subAction = $pathParts[4] ?? ''; // 'updateItemQuantity', etc.
+$subResource = $pathParts[3] ?? '';
 
-error_log("Method: " . $requestMethod);
-error_log("Resource: " . $resource);
-error_log("SubResource: " . $subResource);
-error_log("SubAction: " . $subAction);
+error_log("Method: $requestMethod, Resource: $resource, SubResource: $subResource");
 
 switch ($requestMethod) {
-  case 'POST':
-    switch ($action) {
-      case 'create':
-        $controller->createBasket($_POST);
+    case 'GET':
+        // GET /api/basket - Fetch user's basket
+        $controller->fetchBasket();
         break;
-      // case 'add':
-      //   $controller->addItemToBasket($_POST);
-      //   break;
-      default:
-        http_response_code(404);
-        echo json_encode(['error' => 'Not Found']);
+
+    case 'PUT':
+        // PUT /api/basket - Update entire basket
+        $controller->updateBasket();
         break;
-    }
-    break;
 
-  case 'PUT':
-    if ($subResource === 'items') {
-      switch ($subAction) {
-        case 'updateItemQuantity':
-          $controller->updateBasket();
-          break;
-        case 'updateItemQuantity':
-          $controller->updateItemQuantity($id, $_POST);
-          break;
-        case 'toggleItemSelected':
-          $controller->toggleItemSelected($id, $_POST);
-          break;
-        case 'selectAllItems':
-          $controller->selectAllItems($_POST);
-          break;
-        case 'deselectAllItems':
-          $controller->deselectAllItems($_POST);
-          break;
-        case 'removeItem':
-          $controller->removeItem($id);
-          break;
-        case 'clearAllItems':
-          $controller->clearAllItems($_POST);
-          break;
-        default:
-          http_response_code(404);
-          echo json_encode(['error' => 'Not Found']);
-          break;
-      }
-    } else {
-      http_response_code(404);
-      echo json_encode(['error' => 'Invalid sub-resource']);
-    }
-    break;
-
-  case 'GET':
-    $controller->fetchBasket();
-    break;
-
-  case 'DELETE':
-    switch ($action) {
-      case 'delete':
-        $controller->deleteBasket();
+    case 'POST':
+        if ($subResource === 'sync') {
+            // POST /api/basket/sync - Sync guest basket
+            $controller->syncGuestBasket();
+        } else {
+            http_response_code(404);
+            echo json_encode(['error' => 'Not Found']);
+        }
         break;
-      default:
-        http_response_code(404);
-        echo json_encode(['error' => 'Not Found']);
-        break;
-    }
-    break;
 
-  default:
-    http_response_code(404);
-    echo json_encode(['error' => 'Method not allowed']);
-    break;
+    default:
+        http_response_code(405);
+        echo json_encode(['error' => 'Method not allowed']);
+        break;
 }

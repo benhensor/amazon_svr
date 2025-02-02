@@ -368,36 +368,20 @@ class AddressController
   {
     $this->executionStartTime = microtime(true);
 
-    // Verify token
-    $token = $_COOKIE['authToken'] ?? null;
-    if (!$token) {
-      return $this->generateResponse->send(
-        'Failure',
-        401,
-        'No authentication token provided'
-      );
-    }
-
-    // Verify user
-    $user = AuthMiddleware::authenticate($token);
-    if (!$user) {
-      return $this->generateResponse->send(
-        'Failure',
-        401,
-        'Invalid authentication token'
-      );
-    }
-
-    // Get address ID from URL
-    if (!$addressId) {
-      return $this->generateResponse->send(
-        'Failure',
-        400,
-        'Address ID is required'
-      );
-    }
-
     try {
+
+      // Auth check
+      $user = AuthMiddleware::authenticate();
+
+      // Get address ID from URL
+      if (!$addressId) {
+        return $this->generateResponse->send(
+          'Failure',
+          400,
+          'Address ID is required'
+        );
+      }
+
       // Verify address belongs to user
       $address = $this->address->getById($addressId);
       if (!$address || $address['user_id'] !== $user['user_id']) {
@@ -437,36 +421,19 @@ class AddressController
   {
     $this->executionStartTime = microtime(true);
 
-    // Verify token
-    $token = $_COOKIE['authToken'] ?? null;
-    if (!$token) {
-      return $this->generateResponse->send(
-        'Failure',
-        401,
-        'No authentication token provided'
-      );
-    }
-
-    // Verify user
-    $user = AuthMiddleware::authenticate($token);
-    if (!$user) {
-      return $this->generateResponse->send(
-        'Failure',
-        401,
-        'Invalid authentication token'
-      );
-    }
-
-    // Verify address id
-    if (!$addressId) {
-      return $this->generateResponse->send(
-        'Failure',
-        400,
-        'Address ID is required'
-      );
-    }
-
     try {
+
+      // Auth check
+      $user = AuthMiddleware::authenticate();
+
+      // Verify address id
+      if (!$addressId) {
+        return $this->generateResponse->send(
+          'Failure',
+          400,
+          'Address ID is required'
+        );
+      }
 
       // Verify address belongs to user
       $address = $this->address->getById($addressId);

@@ -289,29 +289,11 @@ class UserController
 
   public function updateUser() {
     $this->executionStartTime = microtime(true);
-
-    // Verify token
-    $token = $_COOKIE['authToken'] ?? null;
-    if (!$token) {
-      return $this->generateResponse->send(
-        'Failure',
-        401,
-        'No authentication token provided'
-      );
-    }
-
+    
     try {
 
-      // Verify user
-      try {
-        $user = AuthMiddleware::authenticate($token);
-      } catch (Exception $e) {
-        return $this->generateResponse->send(
-          'Failure',
-          401,
-          'Invalid or expired token'
-        );
-      }
+      // Auth check
+      $user = AuthMiddleware::authenticate();
 
       // Check JSON decode errors
       $data = json_decode(file_get_contents('php://input'), true);
@@ -396,27 +378,11 @@ class UserController
   public function getUserProfile() {
     $this->executionStartTime = microtime(true);
 
-    // Verify token exists
-    $token = $_COOKIE['authToken'] ?? null;
-    if (!$token) {
-      return $this->generateResponse->send(
-        'Failure',
-        401,
-        'Not authenticated'
-      );
-    }
-
     try {
-      // Verify and decode token
-      try {
-        $user = AuthMiddleware::authenticate($token);
-      } catch (Exception $e) {
-        return $this->generateResponse->send(
-          'Failure',
-          401,
-          'Invalid or expired token'
-        );
-      }
+
+      // Auth check
+      $user = AuthMiddleware::authenticate();
+
       // Your get profile logic here
       $userProfile = $this->user->getProfileById($user['user_id']);
       if (!$userProfile) {
@@ -445,34 +411,10 @@ class UserController
   public function getCurrentUser() {
     $this->executionStartTime = microtime(true);
 
-    // Debugging
-    error_log("getCurrentUser() called");
-
-    // Verify token
-    $token = $_COOKIE['authToken'] ?? null;
-    error_log("Token from cookie: " . ($token ? "present" : "not present"));
-    if (!$token) {
-      return $this->generateResponse->send(
-        'Failure',
-        401,
-        'Not authenticated'
-      );
-    }
-
     try {
 
-      // Verify and decode token
-      try {
-        $user = AuthMiddleware::authenticate($token);
-        error_log("User authenticated: " . json_encode($user));
-      } catch (Exception $e) {
-        error_log("Token authentication failed: " . $e->getMessage());
-        return $this->generateResponse->send(
-          'Failure',
-          401,
-          'Invalid or expired token'
-        );
-      }
+      // Auth check
+      $user = AuthMiddleware::authenticate();
 
       // Get current user
       $currentUser = $this->user->findById($user['user_id']);
@@ -516,28 +458,10 @@ class UserController
   {
     $this->executionStartTime = microtime(true);
 
-    // Verify token
-    $token = $_COOKIE['authToken'] ?? null;
-    if (!$token) {
-      return $this->generateResponse->send(
-        'Failure',
-        401,
-        'Not authenticated'
-      );
-    }
-
     try {
 
-      // Verify and decode token
-      try {
-        $user = AuthMiddleware::authenticate($token);
-      } catch (Exception $e) {
-        return $this->generateResponse->send(
-          'Failure',
-          401,
-          'Invalid or expired token'
-        );
-      }
+      // Auth check
+      $user = AuthMiddleware::authenticate();
 
       // Your delete logic here
       $deletedUser = $this->user->delete($user['user_id']);
