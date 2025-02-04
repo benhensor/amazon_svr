@@ -13,11 +13,24 @@ class Address
 
   public function getAll($userId)
   {
-    $query = $this->db->prepare('SELECT address_id, user_id, full_name, phone_number, address_line1, address_line2, city, county, postcode, country, is_default, is_billing, delivery_instructions, address_type FROM addresses WHERE user_id = ? ORDER BY is_default DESC, created_at DESC');
-    $query->execute([$userId]);
-    $result = $query->fetchAll(\PDO::FETCH_ASSOC);
-    error_log("Database result: " . json_encode($result)); // Debug log
-    return $result;
+      error_log("Debug: Starting getAll for userId: " . $userId);
+      
+      $query = $this->db->prepare('SELECT address_id, user_id, full_name, phone_number, address_line1, address_line2, city, county, postcode, country, is_default, is_billing, delivery_instructions, address_type FROM addresses WHERE user_id = ? ORDER BY is_default DESC, created_at DESC');
+      
+      error_log("Debug: SQL Query: " . $query->queryString);
+      
+      $query->execute([$userId]);
+      
+      // Get any SQL errors
+      if ($query->errorCode() !== '00000') {
+          error_log("Debug: SQL Error: " . json_encode($query->errorInfo()));
+      }
+      
+      $result = $query->fetchAll(\PDO::FETCH_ASSOC);
+      error_log("Debug: Row count: " . count($result));
+      error_log("Debug: First few rows: " . json_encode(array_slice($result, 0, 2)));
+      
+      return $result;
   }
 
   public function getById($id)

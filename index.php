@@ -82,6 +82,9 @@ try {
     case 'api/order':
       require_once __DIR__ . '/routes/OrderRoutes.php';
       break;
+    case 'api/payment-methods':
+      require_once __DIR__ . '/routes/PaymentMethodRoutes.php';
+      break;
     default:
       http_response_code(404);
       echo json_encode(['error' => 'Route not found', 'resource' => $resource]);

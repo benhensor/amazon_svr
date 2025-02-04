@@ -47,7 +47,7 @@ class OrderController
       }
 
       // Validate order data
-      if (!isset($user['user_id']) || !isset($data['order_placed']) || !isset($data['shipping']) || !isset($data['order_items']) || !isset($data['total'])) {
+      if (!isset($user['user_id']) || !isset($data['order_placed']) || !isset($data['delivery_address']) || !isset($data['payment_method']) || !isset($data['shipping']) || !isset($data['order_items']) || !isset($data['total'])) {
         return $this->generateResponse->send(
           'Failure',
           400,
@@ -64,6 +64,8 @@ class OrderController
           'order_id' => Uuid::uuid4()->toString(),
           'user_id' => $user['user_id'],
           'order_placed' => $data['order_placed'],
+          'delivery_address' => $data['delivery_address'],  
+          'payment_method' => $data['payment_method'],
           'shipping' => $data['shipping'],
           'total' => $data['total'],
           'status' => 'pending',
@@ -133,6 +135,7 @@ class OrderController
 
       if (!$order) {
         return $this->generateResponse->send(
+
           'Failure',
           404,
           'Order not found'

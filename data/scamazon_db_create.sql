@@ -58,6 +58,8 @@ CREATE TABLE orders (
     order_id VARCHAR(255) PRIMARY KEY,
     user_id BIGINT NOT NULL,
     order_placed DATETIME NOT NULL,
+    delivery_address JSON NOT NULL,
+    payment_method JSON NOT NULL,
     shipping JSON NOT NULL,
     total DECIMAL(10,2) NOT NULL,
     status VARCHAR(255) NOT NULL DEFAULT 'pending',
@@ -80,14 +82,19 @@ CREATE TABLE order_items (
 
 CREATE TABLE payment_methods (
     payment_method_id BIGINT PRIMARY KEY,
+    user_id BIGINT NOT NULL,
     bank VARCHAR(255) NOT NULL,
-    type VARCHAR(255) NOT NULL,
-    account VARCHAR(255) NOT NULL,
-    number VARCHAR(255) NOT NULL,
+    card_type VARCHAR(255) NOT NULL,
+    card_account VARCHAR(255) NOT NULL,
+    card_number VARCHAR(255) NOT NULL,
+    cardholder_name VARCHAR(255) NOT NULL,
     start_date VARCHAR(255) NOT NULL,
     end_date VARCHAR(255) NOT NULL,
     cvv VARCHAR(255) NOT NULL,
-    status VARCHAR(255) NOT NULL DEFAULT 'active'
+    status VARCHAR(255) NOT NULL DEFAULT 'active',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(user_id)
 );
 
 CREATE TABLE profiles (
@@ -106,4 +113,5 @@ CREATE INDEX idx_orders_user_id ON orders(user_id);
 CREATE INDEX idx_profiles_user_id ON profiles(user_id);
 CREATE INDEX idx_basket_items_basket_id ON basket_items(basket_id);
 CREATE INDEX idx_order_items_order_id ON order_items(order_id);
+CREATE INDEX idx_payment_methods_user_id ON payment_methods(user_id);
 

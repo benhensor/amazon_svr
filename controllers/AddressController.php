@@ -26,28 +26,11 @@ class AddressController
   public function getAllAddresses()
   {
     $this->executionStartTime = microtime(true);
-
-    // Verify token
-    $token = $_COOKIE['authToken'] ?? null;
-    if (!$token) {
-      return $this->generateResponse->send(
-        'Failure',
-        401,
-        'No authentication token provided'
-      );
-    }
-
-    // Verify user
-    $user = AuthMiddleware::authenticate();
-    if (!$user) {
-      return $this->generateResponse->send(
-        'Failure',
-        401,
-        'Invalid authentication token'
-      );
-    }
-
+    
     try {
+
+      // Verify user
+      $user = AuthMiddleware::authenticate();
       // Your get all addresses logic here
       $addresses = $this->address->getAll($user['user_id']);
 
@@ -63,7 +46,7 @@ class AddressController
         'Success',
         200,
         'Addresses retrieved successfully',
-        ['data' => $transformedAddresses]
+        $transformedAddresses
       );
     } catch (Exception $e) {
       return $this->generateResponse->send(
@@ -78,41 +61,22 @@ class AddressController
   {
     $this->executionStartTime = microtime(true);
     error_log("Starting createAddress");
-
-    // Verify token
-    $token = $_COOKIE['authToken'] ?? null;
-    if (!$token) {
-      return $this->generateResponse->send(
-        'Failure',
-        401,
-        'No authentication token provided'
-      );
-    }
-
-    // Verify user
-    $user = AuthMiddleware::authenticate();
-    if (!$user) {
-      return $this->generateResponse->send(
-        'Failure',
-        401,
-        'Invalid authentication token'
-      );
-    }
-
-    error_log("User authenticated: " . $user['user_id']);
-
-    // Get and decode request body
-    $data = json_decode(file_get_contents('php://input'), true);
-    error_log("Received address data: " . print_r($data, true));
-    if (!$data) {
-      return $this->generateResponse->send(
-        'Failure',
-        400,
-        'No address data provided'
-      );
-    }
-
+    
     try {
+  
+      // Verify user
+      $user = AuthMiddleware::authenticate();
+  
+      // Get and decode request body
+      $data = json_decode(file_get_contents('php://input'), true);
+      error_log("Received address data: " . print_r($data, true));
+      if (!$data) {
+        return $this->generateResponse->send(
+          'Failure',
+          400,
+          'No address data provided'
+        );
+      }
       // Validate required fields
       if (
         !isset($user['user_id']) ||
@@ -133,22 +97,6 @@ class AddressController
           'Missing required fields'
         );
       }
-
-      error_log("Missing fields: " . print_r(array_filter([
-        'user_id' => !isset($user['user_id']),
-        'address_type' => !isset($data['address_type']),
-        'full_name' => !isset($data['full_name']),
-        'phone_number' => !isset($data['phone_number']),
-        'address_line1' => !isset($data['address_line1']),
-        'city' => !isset($data['city']),
-        'postcode' => !isset($data['postcode']),
-        'country' => !isset($data['country']),
-        'delivery_instructions' => !isset($data['delivery_instructions']),
-        'is_default' => !isset($data['is_default']),
-        'is_billing' => !isset($data['is_billing'])
-      ], function ($v) {
-        return $v;
-      }), true));
 
       // Sanitize inputs
       $full_name = trim(htmlspecialchars($data['full_name']));
@@ -228,38 +176,30 @@ class AddressController
   public function updateAddress($addressId)
   {
     $this->executionStartTime = microtime(true);
-
-    // Verify token
-    $token = $_COOKIE['authToken'] ?? null;
-    if (!$token) {
-      return $this->generateResponse->send(
-        'Failure',
-        401,
-        'No authentication token provided'
-      );
-    }
-
-    // Verify user
-    $user = AuthMiddleware::authenticate();
-    if (!$user) {
-      return $this->generateResponse->send(
-        'Failure',
-        401,
-        'Invalid authentication token'
-      );
-    }
-
-    // Get and decode request body
-    $data = json_decode(file_get_contents('php://input'), true);
-    if (!$data) {
-      return $this->generateResponse->send(
-        'Failure',
-        400,
-        'No address data provided'
-      );
-    }
-
+    
     try {
+  
+      // Verify user
+      $user = AuthMiddleware::authenticate();
+
+      // Get address ID from URL
+      if (!$addressId) {
+        return $this->generateResponse->send(
+          'Failure',
+          400,
+          'Address ID is required'
+        );
+      }
+  
+      // Get and decode request body
+      $data = json_decode(file_get_contents('php://input'), true);
+      if (!$data) {
+        return $this->generateResponse->send(
+          'Failure',
+          400,
+          'No address data provided'
+        );
+      }
       // Verify address belongs to user
       $existingAddress = $this->address->getById($addressId);
       if (!$existingAddress || $existingAddress['user_id'] !== $user['user_id']) {

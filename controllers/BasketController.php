@@ -50,7 +50,7 @@ class BasketController
         return [
           'basket_item_id' => $item['basket_item_id'],
           'basket_id' => (int)$item['basket_id'],
-          'product_data' => json_decode($item['product_data'], true),
+          'product_data' => $item['product_data'],
           'quantity' => (int)$item['quantity'],
           'is_selected' => (bool)$item['is_selected']
         ];

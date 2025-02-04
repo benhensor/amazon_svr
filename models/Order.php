@@ -33,7 +33,7 @@ class Order
 
     try {
       // First get the order
-      $sql = "SELECT order_id, user_id, order_placed, shipping, total, status, created_at, updated_at FROM orders WHERE 1=1 ";
+      $sql = "SELECT order_id, user_id, order_placed, delivery_address, payment_method, shipping, total, status, created_at, updated_at FROM orders WHERE 1=1 ";
       $params = [];
 
       foreach ($conditions as $key => $value) {
@@ -61,6 +61,16 @@ class Order
         $order['order_items'] = $items;
       }
 
+      // Decode delivery address JSON
+      if (isset($order['delivery_address'])) {
+        $order['delivery_address'] = json_decode($order['delivery_address'], true);
+      }
+
+      // Decode payment method JSON
+      if (isset($order['payment_method'])) {
+        $order['payment_method'] = json_decode($order['payment_method'], true);
+      }
+
       // Decode shipping JSON
       if (isset($order['shipping'])) {
         $order['shipping'] = json_decode($order['shipping'], true);
@@ -79,7 +89,7 @@ class Order
 
     try {
       // First get all orders
-      $sql = "SELECT order_id, user_id, order_placed, shipping, total, status, created_at, updated_at 
+      $sql = "SELECT order_id, user_id, order_placed, delivery_address, payment_method, shipping, total, status, created_at, updated_at 
                 FROM orders WHERE 1=1 ";
       $params = [];
 
@@ -119,6 +129,14 @@ class Order
 
       // Build final order objects with their items
       $result = array_map(function ($order) use ($itemsByOrder) {
+        // Decode delivery address JSON if it exists
+        if (isset($order['delivery_address']) && !is_null($order['delivery_address'])) {
+          $order['delivery_address'] = json_decode($order['delivery_address'], true);
+        }
+        // Decode payment method JSON if it exists
+        if (isset($order['payment_method']) && !is_null($order['payment_method'])) {
+          $order['payment_method'] = json_decode($order['payment_method'], true);
+        }
         // Decode shipping JSON if it exists
         if (isset($order['shipping']) && !is_null($order['shipping'])) {
           $order['shipping'] = json_decode($order['shipping'], true);
@@ -143,14 +161,16 @@ class Order
       $orderPlaced = new \DateTime($data['order_placed']);
       $formattedDate = $orderPlaced->format('Y-m-d H:i:s');
       $sql = "INSERT INTO orders 
-                    (order_id, user_id, order_placed, shipping, total, status) 
-                    VALUES (?, ?, ?, ?, ?, ?)";
+                    (order_id, user_id, order_placed, delivery_address, payment_method, shipping, total, status) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
       $stmt = $this->db->prepare($sql);
       $success = $stmt->execute([
         $data['order_id'],
         $data['user_id'],
         $formattedDate,
+        json_encode($data['delivery_address']),
+        json_encode($data['payment_method']),
         json_encode($data['shipping']),
         $data['total'],
         $data['status']
