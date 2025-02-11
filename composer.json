@@ -1,6 +1,6 @@
 {
-  "name": "localhost/scamazon_svr",
-  "description": "Scamazon Server",
+  "name": "localhost/amazon_svr",
+  "description": "Amazon Server",
   "type": "project",
   "license": "Apache-2.0",
   "authors": [

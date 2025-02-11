@@ -9,7 +9,7 @@ class Database {
         try {
             $host = $_ENV['DB_HOST'] ?? 'localhost';
             $port = $_ENV['DB_PORT'] ?? '3306';
-            $database = $_ENV['DB_DATABASE'] ?? 'scamazon_db';
+            $database = $_ENV['DB_DATABASE'] ?? 'amazon_db';
             $username = $_ENV['DB_USERNAME'] ?? 'root';
             $password = '';
 
