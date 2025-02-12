@@ -298,7 +298,7 @@ class OrderController
       }
 
       // Delete order items first
-      $deletedItems = $this->orderItem->deleteMany([
+      $this->orderItem->deleteMany([
         'order_id' => $orderId
       ]);
 
@@ -321,7 +321,8 @@ class OrderController
       return $this->generateResponse->send(
         'Success',
         200,
-        'Order deleted successfully'
+        'Order deleted successfully',
+        $orderId
       );
     } catch (Exception $e) {
       $this->order->rollBack();

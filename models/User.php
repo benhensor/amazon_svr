@@ -75,4 +75,50 @@ class User
     $query = $this->db->prepare('DELETE FROM users WHERE user_id = ?');
     return $query->execute([$id]);
   }
+
+  public function storeRefreshToken($userId, $tokenHash) {
+    try {
+      // First, clean up any expired tokens for this user
+      $cleanupQuery = $this->db->prepare('DELETE FROM refresh_tokens WHERE user_id = ? AND expires_at < NOW()');
+      $cleanupQuery->execute([$userId]);
+
+      // Insert new refresh token
+      $query = $this->db->prepare('INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES (?, ?, DATE_ADD(NOW(), INTERVAL 7 DAY))');
+      return $query->execute([$userId, $tokenHash]);
+    } catch (\PDOException $e) {
+      error_log("Database error in storeRefreshToken: " . $e->getMessage());
+      return false;
+    }
+  }
+
+  public function verifyRefreshToken($userId, $tokenHash) {
+    try {
+      $query = $this->db->prepare('SELECT token_hash FROM refresh_tokens WHERE user_id = ? AND token_hash = ? AND expires_at > NOW()');
+      $query->execute([$userId, $tokenHash]);
+      return $query->fetch() !== false;
+    } catch (\PDOException $e) {
+      error_log("Database error in verifyRefreshToken: " . $e->getMessage());
+      return false;
+    }
+  }
+
+  public function removeRefreshToken($userId, $tokenHash) {
+    try {
+      $query = $this->db->prepare('DELETE FROM refresh_tokens WHERE user_id = ? AND token_hash = ?');
+      return $query->execute([$userId, $tokenHash]);
+    } catch (\PDOException $e) {
+      error_log("Database error in removeRefreshToken: " . $e->getMessage());
+      return false;
+    }
+  }
+
+  public function removeAllRefreshTokens($userId) {
+    try {
+      $query = $this->db->prepare('DELETE FROM refresh_tokens WHERE user_id = ?');
+      return $query->execute([$userId]);
+    } catch (\PDOException $e) {
+      error_log("Database error in removeAllRefreshTokens: " . $e->getMessage());
+      return false;
+    }
+  }
 }

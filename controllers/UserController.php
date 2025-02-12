@@ -6,11 +6,11 @@ use Middleware\AuthMiddleware;
 use Services\GenerateResponse;
 use Models\User;
 use Firebase\JWT\JWT;
+use Firebase\JWT\Key;
 use Exception;
 
+class UserController {
 
-class UserController
-{
   private $user;
   private $generateResponse;
   private $executionStartTime;
@@ -19,6 +19,31 @@ class UserController
     $this->user = new User();
     $this->generateResponse = new GenerateResponse();
     $this->executionStartTime = microtime(true);
+  }
+
+  private function generateTokens($userId, $email) {
+    if (!isset($_ENV['JWT_SECRET']) || !isset($_ENV['REFRESH_TOKEN_SECRET'])) {
+      throw new Exception('JWT secrets not configured');
+    }
+
+    // Generate access token (short-lived, 15 minutes)
+    $accessToken = JWT::encode([
+      'user_id' => $userId,
+      'email' => $email,
+      'exp' => time() + (15 * 60), // 15 minutes
+      'iat' => time(),
+      'type' => 'access'
+    ], $_ENV['JWT_SECRET'], 'HS256');
+
+    // Generate refresh token (long-lived, 7 days)
+    $refreshToken = JWT::encode([
+      'user_id' => $userId,
+      'exp' => time() + (7 * 24 * 60 * 60), // 7 days
+      'iat' => time(),
+      'type' => 'refresh'
+    ], $_ENV['REFRESH_TOKEN_SECRET'], 'HS256');
+
+    return ['accessToken' => $accessToken, 'refreshToken' => $refreshToken];
   }
 
   private function validateEmail($email) {
@@ -38,34 +63,17 @@ class UserController
   }
 
   public function login() {
-    $this->executionStartTime = microtime(true);
-
-    header('Content-Type: application/json');
-
     try {
-      // Validate required fields
       $data = json_decode(file_get_contents('php://input'), true);
-      error_log("Login attempt data: " . json_encode($data));
-
-      // Check JSON decode errors
-      if ($data === null && json_last_error() !== JSON_ERROR_NONE) {
-        return $this->generateResponse->send(
-          'Failure',
-          400,
-          'Invalid JSON format'
-        );
-      }
-
-      // Check for missing fields
+      
       if (!isset($data['email']) || !isset($data['password'])) {
         return $this->generateResponse->send(
           'Failure',
           400,
-          'Missing required fields: email and password'
+          'Missing required fields'
         );
       }
 
-      // Validate email
       $validatedEmail = $this->validateEmail($data['email']);
       if (!$validatedEmail) {
         return $this->generateResponse->send(
@@ -75,13 +83,8 @@ class UserController
         );
       }
 
-      // Trim password
-      $password = trim($data['password']);
-
-      // Your login logic here
       $user = $this->user->findByEmail($validatedEmail);
-      error_log("User lookup result: " . ($user ? "User found" : "User not found"));
-      if (!$user) {
+      if (!$user || !password_verify(trim($data['password']), $user['password'])) {
         return $this->generateResponse->send(
           'Failure',
           401,
@@ -89,99 +92,134 @@ class UserController
         );
       }
 
-      // Verify password
-      $passwordMatch = password_verify($password, $user['password']);
-      error_log("Password verification result: " . ($passwordMatch ? "Match" : "No match"));
+      // Generate tokens
+      $tokens = $this->generateTokens($user['user_id'], $user['email']);
+      
+      // Store refresh token hash in database
+      $this->user->storeRefreshToken($user['user_id'], hash('sha256', $tokens['refreshToken']));
 
-      if (!$passwordMatch) {
-        return $this->generateResponse->send(
-          'Failure',
-          401,
-          'Invalid email or password'
-        );
-      }
-
-      // Check for JWT secret
-      if (!isset($_ENV['JWT_SECRET'])) {
-        return $this->generateResponse->send(
-          'Failure',
-          500,
-          'JWT secret not set'
-        );
-      }
-
-      // Generate JWT
-      $token = JWT::encode([
-        'user_id' => $user['user_id'],
-        'email' => $user['email'],
-        'exp' => time() + (24 * 60 * 60), // 24 hours
-        'iat' => time(),
-        'nbf' => time()
-      ], $_ENV['JWT_SECRET'], 'HS256');
-
-
-      setCookie('authToken', $token, [
-        'expires' => time() + (24 * 60 * 60),
-        'path' => '/', // replace with '/scamazon/' for deployment
-        'domain' => $_ENV['COOKIE_DOMAIN'] ?? 'benhensor.co.uk',
-        'secure' => true,
-        'httponly' => true,
-        'samesite' => 'None'
-      ]);
-
-      unset($user['password']); // Remove password from response
+      unset($user['password']);
 
       return $this->generateResponse->send(
         'Success',
         200,
         'Login successful',
-        ['user' => $user]
+        [
+          'user' => $user,
+          'accessToken' => $tokens['accessToken'],
+          'refreshToken' => $tokens['refreshToken']
+        ]
       );
     } catch (Exception $e) {
       error_log("Login error: " . $e->getMessage());
       return $this->generateResponse->send(
         'Error',
         500,
-        'Internal server error: ' . $e->getMessage()
+        'Internal server error'
+      );
+    }
+  }
+
+  public function refreshToken() {
+    try {
+      $data = json_decode(file_get_contents('php://input'), true);
+      
+      if (!isset($data['refreshToken'])) {
+        return $this->generateResponse->send(
+          'Failure',
+          400,
+          'Refresh token required'
+        );
+      }
+
+      try {
+        $decoded = JWT::decode($data['refreshToken'], new Key($_ENV['REFRESH_TOKEN_SECRET'], 'HS256'));
+        
+        if ($decoded->type !== 'refresh') {
+          throw new Exception('Invalid token type');
+        }
+
+        // Verify refresh token exists in database
+        $tokenHash = hash('sha256', $data['refreshToken']);
+        $isValid = $this->user->verifyRefreshToken($decoded->user_id, $tokenHash);
+        
+        if (!$isValid) {
+          throw new Exception('Invalid refresh token');
+        }
+
+        // Get user details
+        $user = $this->user->findById($decoded->user_id);
+        if (!$user) {
+          throw new Exception('User not found');
+        }
+
+        // Generate new tokens
+        $tokens = $this->generateTokens($user['user_id'], $user['email']);
+        
+        // Update refresh token in database
+        $this->user->storeRefreshToken($user['user_id'], hash('sha256', $tokens['refreshToken']));
+
+        return $this->generateResponse->send(
+          'Success',
+          200,
+          'Tokens refreshed successfully',
+          [
+            'accessToken' => $tokens['accessToken'],
+            'refreshToken' => $tokens['refreshToken']
+          ]
+        );
+      } catch (Exception $e) {
+        return $this->generateResponse->send(
+          'Failure',
+          401,
+          'Invalid refresh token'
+        );
+      }
+    } catch (Exception $e) {
+      return $this->generateResponse->send(
+        'Error',
+        500,
+        'Internal server error'
       );
     }
   }
 
   public function logout() {
-    $this->executionStartTime = microtime(true);
-
-    // Verify token
-    $token = $_COOKIE['authToken'] ?? null;
-    if (!$token) {
-      return $this->generateResponse->send(
-        'Failure',
-        401,
-        'No authentication token provided'
-      );
-    }
-
     try {
+      $data = json_decode(file_get_contents('php://input'), true);
+      
+      if (!isset($data['refreshToken'])) {
+        return $this->generateResponse->send(
+          'Failure',
+          400,
+          'Refresh token required'
+        );
+      }
 
-      // Your logout logic here
-      setCookie('authToken', '', [
-        'expires' => time() - 3600,
-        'path' => '/',
-        'domain' => $_ENV['COOKIE_DOMAIN'],
-        'secure' => true,
-        'httponly' => true,
-        'samesite' => 'None'
-      ]);
+      try {
+        $decoded = JWT::decode($data['refreshToken'], new Key($_ENV['REFRESH_TOKEN_SECRET'], 'HS256'));
+        
+        // Remove refresh token from database
+        $this->user->removeRefreshToken($decoded->user_id, hash('sha256', $data['refreshToken']));
 
-      return $this->generateResponse->send(
-        'Success',
-        200,
-        'Logout successful'
-      );
+        return $this->generateResponse->send(
+          'Success',
+          200,
+          'Logout successful'
+        );
+      } catch (Exception $e) {
+        // If token is invalid, still return success as the frontend will clear tokens
+        return $this->generateResponse->send(
+          'Success',
+          200,
+          'Logout successful'
+        );
+      }
     } catch (Exception $e) {
       return $this->generateResponse->send(
         'Error',
         500,
-        'Internal server error: ' . $e->getMessage()
+        'Internal server error'
       );
     }
   }
@@ -265,19 +303,34 @@ class UserController
         'full_name' => $fullname
       ];
 
-      // Your registration logic here
+      // Create new user
       $newUser = $this->user->create($userData);
 
-      if ($newUser) {
+      if (!$newUser) {
         return $this->generateResponse->send(
-          'Success',
-          201,
-          'User registered successfully',
-          ['user' => $newUser] // Return user data
+          'Failure',
+          400,
+          'User registration failed'
         );
-      } else {
-        throw new Exception('User registration failed');
       }
+
+      $tokens = $this->generateTokens($newUser['user_id'], $newUser['email']);
+
+      // Store refresh token hash in database
+      $this->user->storeRefreshToken($newUser['user_id'], hash('sha256', $tokens['refreshToken']));
+
+      unset($newUser['password']); // Remove password from response
+
+      return $this->generateResponse->send(
+        'Success',
+        201,
+        'User registered successfully',
+        [
+          'user' => $newUser,
+          'accessToken' => $tokens['accessToken'],
+          'refreshToken' => $tokens['refreshToken']
+        ] 
+      );
     } catch (Exception $e) {
       return $this->generateResponse->send(
         'Error',
@@ -420,14 +473,6 @@ class UserController
       $currentUser = $this->user->findById($user['user_id']);
       if (!$currentUser) {
         error_log("User not found in database");
-        setcookie('authToken', '', [
-          'expires' => time() - 3600,
-          'path' => '/',
-          'domain' => $_ENV['COOKIE_DOMAIN'],
-          'secure' => true,
-          'httponly' => true,
-          'samesite' => 'None'
-        ]);
 
         return $this->generateResponse->send(
           'Failure',
@@ -454,8 +499,7 @@ class UserController
     }
   }
 
-  public function deleteUser()
-  {
+  public function deleteUser() {
     $this->executionStartTime = microtime(true);
 
     try {

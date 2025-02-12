@@ -26,7 +26,7 @@ class PaymentMethodController
   public function fetchPaymentMethods()
   {
     $this->executionStartTime = microtime(true);
-    
+
     try {
 
       // Verify user
@@ -53,14 +53,23 @@ class PaymentMethodController
   public function addPaymentMethod($data)
   {
     $this->executionStartTime = microtime(true);
-    
+
     try {
-  
       // Verify user
       $user = AuthMiddleware::authenticate();
-  
-      error_log("Debug: User: " . json_encode($user));
-      error_log("Debug: Data: " . json_encode($data));
+      error_log("Debug 1: Starting addPaymentMethod for user " . $user['user_id']);
+
+      // Check if first payment method before any data processing
+      $paymentMethods = $this->paymentMethod->getAll($user['user_id']);
+      error_log("Debug 2: Existing payment methods count: " . count($paymentMethods));
+
+      if (empty($paymentMethods)) {
+        error_log("Debug 3: No existing payment methods - setting status to default");
+        $data['status'] = 'default';
+      }
+
+      error_log("Debug 4: Request data: " . json_encode($data));
+
       // Get and decode request body
       if (!$data) {
         return $this->generateResponse->send(
@@ -69,6 +78,7 @@ class PaymentMethodController
           'No payment method data provided'
         );
       }
+
       // Validate required fields
       if (
         !isset($user['user_id']) ||
@@ -100,6 +110,8 @@ class PaymentMethodController
       $cvv = trim($data['cvv']);
       $status = trim($data['status']);
 
+      error_log("Debug 5: Status after trim: " . $status);
+
       // Validate data formats
       if (
         strlen($bank) < 2 ||
@@ -119,6 +131,8 @@ class PaymentMethodController
         );
       }
 
+      error_log("Debug 6: About to create payment method with status: " . $status);
+
       // Add payment method
       $paymentMethod = $this->paymentMethod->create([
         'user_id' => $user['user_id'],
@@ -133,7 +147,7 @@ class PaymentMethodController
         'status' => $status
       ]);
 
-      error_log("Debug: Payment method: " . json_encode($paymentMethod));
+      error_log("Debug 7: Created payment method: " . json_encode($paymentMethod));
 
       if (!$paymentMethod) {
         throw new \Exception("Failed to create payment method");
@@ -145,7 +159,6 @@ class PaymentMethodController
         'Payment method added successfully',
         $paymentMethod
       );
-
     } catch (Exception $e) {
       return $this->generateResponse->send(
         'Error',
@@ -158,9 +171,9 @@ class PaymentMethodController
   public function setDefaultPaymentMethod($paymentMethodId)
   {
     $this->executionStartTime = microtime(true);
-    
+
     try {
-  
+
       // Verify user
       $user = AuthMiddleware::authenticate();
 
@@ -172,7 +185,7 @@ class PaymentMethodController
           'Payment method ID is required'
         );
       }
-  
+
       // Verify payment method belongs to user
       $paymentMethod = $this->paymentMethod->getById($paymentMethodId);
       if (!$paymentMethod || $paymentMethod['user_id'] !== $user['user_id']) {
@@ -199,7 +212,6 @@ class PaymentMethodController
         'Default payment method set successfully',
         $defaultPaymentMethod
       );
-
     } catch (Exception $e) {
       return $this->generateResponse->send(
         'Error',
@@ -250,9 +262,9 @@ class PaymentMethodController
       return $this->generateResponse->send(
         'Success',
         200,
-        'Payment method deleted successfully'
+        'Payment method deleted successfully',
+        $paymentMethodId
       );
-
     } catch (Exception $e) {
       return $this->generateResponse->send(
         'Error',

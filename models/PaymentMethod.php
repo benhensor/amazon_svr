@@ -29,13 +29,13 @@ class PaymentMethod
     return $this->db->rollBack();
   }
 
-  private function isExpired($endDate) 
+  private function isExpired($endDate)
   {
     // For MM/YY format
     if (preg_match('/^(0[1-9]|1[0-2])\/(\d{2})$/', $endDate, $matches)) {
       $month = $matches[1];
       $year = '20' . $matches[2];
-      
+
       $cardDate = mktime(0, 0, 0, $month + 1, 0, $year); // Last day of the month
       return $cardDate < time();
     }
@@ -45,10 +45,10 @@ class PaymentMethod
   private function updateExpiredCards($userId = null)
   {
     // Get all cards
-    $query = $userId ? 
+    $query = $userId ?
       'SELECT payment_method_id, end_date, status FROM payment_methods WHERE user_id = ?' :
       'SELECT payment_method_id, end_date, status FROM payment_methods';
-    
+
     $stmt = $this->db->prepare($query);
     $stmt->execute($userId ? [$userId] : []);
     $cards = $stmt->fetchAll(\PDO::FETCH_ASSOC);
@@ -86,10 +86,6 @@ class PaymentMethod
       error_log("Debug: Starting payment method creation");
       error_log("Debug: Input data: " . json_encode($data));
 
-      // Set initial status based on expiry
-      $initialStatus = $this->isExpired($data['end_date']) ? 
-        self::STATUS_EXPIRED : self::STATUS_VALID;
-
       $query = $this->db->prepare('
             INSERT INTO payment_methods (
                 user_id, 
@@ -117,7 +113,7 @@ class PaymentMethod
         $data['start_date'],
         $data['end_date'],
         $data['cvv'],
-        $initialStatus
+        $data['status']  // Use the status passed in from the controller
       ];
 
       error_log("Debug: Query params: " . json_encode($params));

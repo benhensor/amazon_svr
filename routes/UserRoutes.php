@@ -1,35 +1,43 @@
 <?php
 
 use Controllers\UserController;
+use Services\GenerateResponse;
 
 $controller = new UserController();
+$response = new GenerateResponse();
 
 // Debug logging
 error_log("UserRoutes.php loaded");
 error_log("Request Method: " . $requestMethod);
 error_log("Action: " . $action);
 
-switch ($requestMethod) {  // Changed from $method to $requestMethod to match index.php
+switch ($requestMethod) {
   case 'POST':
     switch ($action) {
       case 'login':
-        $controller->login($_POST);  // Using $_POST instead of $data
+        $controller->login();
         break;
       case 'logout':
         $controller->logout();
         break;
       case 'register':
-        $controller->register($_POST);
+        $controller->register();
+        break;
+      case 'refresh-token':
+        $controller->refreshToken();
         break;
       default:
-        http_response_code(404);
-        echo json_encode(['error' => 'Not Found']);
+        $response->send('Error', 404, 'Not Found');
         break;
     }
-    break;  // Added missing break
+    break;
 
   case 'PUT':
-    $controller->updateUser($id, $_POST);
+    if ($action === 'update') {
+      $controller->updateUser();
+    } else {
+      $response->send('Error', 404, 'Not Found');
+    }
     break;
 
   case 'GET':
@@ -41,18 +49,20 @@ switch ($requestMethod) {  // Changed from $method to $requestMethod to match in
         $controller->getCurrentUser();
         break;
       default:
-        http_response_code(404);
-        echo json_encode(['error' => 'Not Found']);
+        $response->send('Error', 404, 'Not Found');
         break;
     }
-    break;  // Added missing break
+    break;
 
   case 'DELETE':
-    $controller->deleteUser($id);
+    if ($action === 'delete') {
+      $controller->deleteUser();
+    } else {
+      $response->send('Error', 404, 'Not Found');
+    }
     break;
 
   default:
-    http_response_code(404);
-    echo json_encode(['error' => 'Not Found']);
+    $response->send('Error', 404, 'Not Found');
     break;
 }
