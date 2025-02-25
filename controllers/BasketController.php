@@ -12,11 +12,11 @@ class BasketController
   private $generateResponse;
   private $executionStartTime;
 
-  public function __construct()
+  public function __construct(\Models\Basket $basket, \Models\BasketItem $basketItem, \Services\GenerateResponse $generateResponse)
   {
-    $this->basket = new \Models\Basket();
-    $this->basketItem = new \Models\BasketItem();
-    $this->generateResponse = new \Services\GenerateResponse();
+    $this->basket = $basket;
+    $this->basketItem = $basketItem;
+    $this->generateResponse = $generateResponse;
     $this->executionStartTime = microtime(true);
   }
 

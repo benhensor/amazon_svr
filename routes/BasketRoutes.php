@@ -1,7 +1,10 @@
 <?php
 use Controllers\BasketController;
 
-$controller = new BasketController();
+$basket = new \Models\Basket();
+$basketItem = new \Models\BasketItem();
+$generateResponse = new \Services\GenerateResponse();
+$controller = new BasketController($basket, $basketItem, $generateResponse);
 
 // Get additional path segments for nested routes
 $subResource = $pathParts[3] ?? '';

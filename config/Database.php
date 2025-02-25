@@ -11,7 +11,7 @@ class Database {
             $port = $_ENV['DB_PORT'] ?? '3306';
             $database = $_ENV['DB_DATABASE'] ?? 'amazon_db';
             $username = $_ENV['DB_USERNAME'] ?? 'root';
-            $password = '';
+            $password = $_ENV['PASSWORD'] ?? '';
 
             $dsn = "mysql:host={$host};port={$port};dbname={$database}";
             
